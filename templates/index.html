@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jev-Shield</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+      background: #eef0f3;
+      color: #222;
+    }
+    .wrap { max-width: 360px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .desc { margin: 0 0 20px; font-size: 13px; color: #666; }
+
+    /* 휴대폰 화면 */
+    .phone {
+      background: #1c1f26;
+      border-radius: 36px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    }
+    .screen {
+      background: linear-gradient(#2b3140, #1f232d);
+      border-radius: 26px;
+      padding: 36px 20px 28px;
+      color: #fff;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+    }
+    .status { text-align: center; font-size: 13px; color: #aab; }
+    .number { text-align: center; font-size: 28px; margin: 6px 0 24px; letter-spacing: 1px; }
+
+    .notice { border-radius: 14px; padding: 14px; font-size: 15px; line-height: 1.5; }
+    .notice.waiting { background: rgba(255, 255, 255, 0.08); color: #aab; text-align: center; }
+    .notice.danger { background: #e5484d; color: #fff; font-weight: 600; }
+    .notice.safe { background: rgba(70, 167, 88, 0.25); color: #c9f0d1; }
+    .notice.error { background: rgba(255, 255, 255, 0.08); color: #ffb4b4; }
+
+    .detail { margin-top: 20px; font-size: 14px; }
+    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    .row span:first-child { color: #aab; }
+    .bar { margin-top: 10px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+    .bar-fill { height: 100%; width: 0; border-radius: 4px; transition: width 0.3s; }
+    .bar-scale { display: flex; justify-content: space-between; font-size: 11px; color: #889; margin-top: 4px; }
+
+    .call-buttons { margin-top: auto; padding-top: 24px; display: flex; justify-content: space-around; }
+    .call-buttons div { width: 56px; height: 56px; border-radius: 50%; }
+    .decline { background: #e5484d; }
+    .accept { background: #46a758; }
+
+    /* 입력 영역 */
+    .panel { margin-top: 24px; background: #fff; border-radius: 16px; padding: 18px; }
+    .panel label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
+    .panel input, .panel textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d5d8dd;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      margin-bottom: 14px;
+    }
+    .panel textarea { height: 90px; resize: vertical; }
+    .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .examples button {
+      border: 1px solid #d5d8dd;
+      background: #f6f7f9;
+      border-radius: 14px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    #analyze {
+      width: 100%;
+      padding: 12px;
+      border: 0;
+      border-radius: 8px;
+      background: #2b3140;
+      color: #fff;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    #analyze:disabled { background: #999; cursor: default; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Jev-Shield</h1>
+    <p class="desc">통화 초반 문장을 Jev API로 분류합니다. 문장은 가상 데이터입니다.</p>
+
+    <div class="phone">
+      <div class="screen">
+        <div class="status">수신 전화</div>
+        <div class="number" id="screen-number">010-0000-0000</div>
+
+        <div class="notice waiting" id="notice">아래에 통화 내용을 넣고 판별을 누르세요.</div>
+
+        <div class="detail" id="detail" hidden>
+          <div class="row"><span>분류</span><span id="category"></span></div>
+          <div class="row"><span>위험 단계</span><span id="risk"></span></div>
+          <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+          <div class="bar-scale"><span>0 위험 없음</span><span>4 매우 높음</span></div>
+          <div class="row"><span>응답 시간</span><span id="ms"></span></div>
+        </div>
+
+        <div class="call-buttons">
+          <div class="decline"></div>
+          <div class="accept"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <label for="phone">발신번호</label>
+      <input id="phone" value="010-0000-0000">
+
+      <label for="text">통화 내용</label>
+      <textarea id="text"></textarea>
+
+      <label>예시 문장</label>
+      <div class="examples">
+        <button type="button" data-text="고객님, 실비 청구 많이 하시는 분들께 유리한 갱신형 상품이 출시돼서 안내 전화 드렸어요.">보험 권유</button>
+        <button type="button" data-text="정부지원 저금리 대출 대상자로 선정되셨습니다. 한도 조회 도와드릴까요?">대출 권유</button>
+        <button type="button" data-text="금융감독원입니다. 고객님 계좌가 대포통장으로 신고돼서 잔액을 보호계좌로 옮기셔야 합니다.">피싱</button>
+        <button type="button" data-text="OO치과입니다. 다음 주 화요일 스케일링 예약 잊지 마시라고 연락드렸어요.">정상</button>
+      </div>
+
+      <button id="analyze">판별</button>
+    </div>
+  </div>
+
+  <script>
+    const LEVELS = ["위험 없음", "낮음", "보통", "높음", "매우 높음"];
+    const button = document.getElementById("analyze");
+    const phoneInput = document.getElementById("phone");
+    const notice = document.getElementById("notice");
+    const detail = document.getElementById("detail");
+
+    phoneInput.addEventListener("input", () => {
+      document.getElementById("screen-number").textContent = phoneInput.value;
+    });
+
+    document.querySelectorAll(".examples button").forEach((b) => {
+      b.addEventListener("click", () => {
+        document.getElementById("text").value = b.dataset.text;
+      });
+    });
+
+    function showNotice(type, message) {
+      notice.className = "notice " + type;
+      notice.textContent = message;
+    }
+
+    function barColor(risk) {
+      if (risk >= 3) return "#e5484d";
+      if (risk >= 2) return "#f5a524";
+      return "#46a758";
+    }
+
+    button.addEventListener("click", async () => {
+      detail.hidden = true;
+      showNotice("waiting", "판별 중입니다.");
+      button.disabled = true;
+
+      try {
+        const response = await fetch("/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: phoneInput.value,
+            text: document.getElementById("text").value,
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          showNotice("error", data.error);
+          return;
+        }
+
+        if (data.alert) {
+          showNotice("danger", "🔴 " + data.alert);
+        } else {
+          showNotice("safe", "경고 기준에 해당하지 않습니다.");
+        }
+
+        const level = LEVELS[Math.min(4, Math.max(0, Math.round(data.risk)))];
+        document.getElementById("category").textContent = data.category;
+        document.getElementById("risk").textContent = data.risk + " (" + level + ")";
+        const fill = document.getElementById("bar-fill");
+        fill.style.width = Math.min(100, (data.risk / 4) * 100) + "%";
+        fill.style.background = barColor(data.risk);
+        document.getElementById("ms").textContent = data.ms + " ms";
+        detail.hidden = false;
+      } catch (e) {
+        showNotice("error", "서버에 연결하지 못했습니다.");
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
